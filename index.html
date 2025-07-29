@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Consulta de Qualidade do Ar</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Consulta de Qualidade do Ar</h1>
+        <p class="subtitle">Informe sua localização para verificar a qualidade do ar</p>
+        
+        <form id="locationForm" class="location-form">
+            <div class="form-group">
+                <label for="city">Cidade *</label>
+                <input type="text" id="city" name="city" required>
+                <span class="error-message" id="cityError"></span>
+            </div>
+            
+            <div class="form-group">
+                <label for="state">Estado/Província/Região *</label>
+                <input type="text" id="state" name="state" required>
+                <span class="error-message" id="stateError"></span>
+            </div>
+            
+            <div class="form-group">
+                <label for="country">País</label>
+                <input type="text" id="country" name="country" value="Estados Unidos" placeholder="Padrão: Estados Unidos">
+                <span class="error-message" id="countryError"></span>
+            </div>
+            
+            <div class="form-actions">
+                <button type="submit" class="submit-btn">Consultar Qualidade do Ar</button>
+                <button type="button" class="clear-btn" onclick="clearForm()">Limpar</button>
+            </div>
+        </form>
+        
+        <div id="result" class="result-container" style="display: none;">
+            <!-- Resultados serão inseridos aqui dinamicamente -->
+        </div>
+    </div>
+    
+    <script src="script.js"></script>
+</body>
+</html>

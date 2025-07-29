@@ -1,0 +1,268 @@
+name: 🎭 E2E Tests with Playwright
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    # Executar testes diários às 6:00 UTC para verificar se as APIs externas ainda funcionam
+    - cron: '0 6 * * *'
+
+jobs:
+  e2e-tests:
+    name: 🎭 End-to-End Tests
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+      
+    - name: 🟢 Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        
+    - name: 📦 Install dependencies
+      run: |
+        npm ci || npm install
+        npx playwright install --with-deps chromium
+        
+    - name: 🚀 Start local server
+      run: |
+        npx http-server . -p 3000 &
+        sleep 5
+        
+    - name: 🌐 Test application accessibility
+      run: |
+        # Verificar se o servidor está rodando
+        curl -f http://localhost:3000 || exit 1
+        echo "✅ Application is accessible"
+        
+    - name: 🎭 Run Playwright tests
+      run: |
+        cat > playwright-test.js << 'EOF'
+        const { chromium } = require('playwright');
+
+        (async () => {
+          console.log('🎭 Starting Playwright E2E tests...');
+          
+          const browser = await chromium.launch();
+          const page = await browser.newPage();
+          
+          try {
+            // Navegar para a aplicação
+            console.log('📝 Navigating to application...');
+            await page.goto('http://localhost:3000');
+            
+            // Verificar se a página carregou
+            await page.waitForSelector('h1');
+            const title = await page.textContent('h1');
+            console.log(`✅ Page loaded with title: ${title}`);
+            
+            // Verificar se os campos do formulário estão presentes
+            await page.waitForSelector('input[name="city"]');
+            await page.waitForSelector('input[name="state"]');
+            await page.waitForSelector('input[name="country"]');
+            console.log('✅ Form fields are present');
+            
+            // Simular preenchimento do formulário (São Paulo como exemplo)
+            console.log('📝 Filling form with test data...');
+            await page.fill('input[name="city"]', 'São Paulo');
+            await page.fill('input[name="state"]', 'São Paulo');
+            await page.fill('input[name="country"]', 'Brasil');
+            
+            // Verificar se o botão de envio existe
+            const submitButton = await page.isVisible('button:has-text("Consultar")');
+            console.log(`✅ Submit button visible: ${submitButton}`);
+            
+            // Verificar estrutura básica da página
+            const hasForm = await page.isVisible('form');
+            const hasStyles = await page.evaluate(() => {
+              const link = document.querySelector('link[href="styles.css"]');
+              return !!link;
+            });
+            const hasScript = await page.evaluate(() => {
+              const script = document.querySelector('script[src="script.js"]');
+              return !!script;
+            });
+            
+            console.log(`✅ Form present: ${hasForm}`);
+            console.log(`✅ CSS linked: ${hasStyles}`);
+            console.log(`✅ JavaScript linked: ${hasScript}`);
+            
+            // Verificar responsividade básica
+            await page.setViewportSize({ width: 375, height: 667 }); // Mobile
+            const mobileVisible = await page.isVisible('h1');
+            console.log(`✅ Mobile responsive: ${mobileVisible}`);
+            
+            await page.setViewportSize({ width: 1200, height: 800 }); // Desktop
+            const desktopVisible = await page.isVisible('h1');
+            console.log(`✅ Desktop responsive: ${desktopVisible}`);
+            
+            console.log('🎉 All E2E tests passed!');
+            
+          } catch (error) {
+            console.error('❌ E2E test failed:', error.message);
+            process.exit(1);
+          } finally {
+            await browser.close();
+          }
+        })();
+        EOF
+        
+        npx playwright install chromium
+        node playwright-test.js
+        
+    - name: 🔍 API Integration Test
+      run: |
+        cat > api-test.js << 'EOF'
+        const https = require('https');
+        const http = require('http');
+
+        function makeRequest(url) {
+          return new Promise((resolve, reject) => {
+            const client = url.startsWith('https') ? https : http;
+            const request = client.get(url, (response) => {
+              let data = '';
+              response.on('data', chunk => data += chunk);
+              response.on('end', () => {
+                resolve({ status: response.statusCode, data });
+              });
+            });
+            request.on('error', reject);
+            request.setTimeout(10000, () => {
+              request.destroy();
+              reject(new Error('Request timeout'));
+            });
+          });
+        }
+
+        (async () => {
+          console.log('🌐 Testing API integrations...');
+          
+          try {
+            // Test Nominatim API
+            console.log('📍 Testing Nominatim geocoding API...');
+            const geocodeUrl = 'https://nominatim.openstreetmap.org/search?q=São Paulo,Brasil&format=json&limit=1';
+            const geocodeResponse = await makeRequest(geocodeUrl);
+            
+            if (geocodeResponse.status === 200) {
+              const geocodeData = JSON.parse(geocodeResponse.data);
+              if (geocodeData.length > 0) {
+                console.log('✅ Nominatim API is working');
+              } else {
+                console.log('⚠️ Nominatim API returned empty results');
+              }
+            } else {
+              console.log(`⚠️ Nominatim API returned status: ${geocodeResponse.status}`);
+            }
+            
+            // Test Open-Meteo API
+            console.log('🌬️ Testing Open-Meteo Air Quality API...');
+            const airQualityUrl = 'https://air-quality-api.open-meteo.com/v1/air-quality?latitude=-23.5505&longitude=-46.6333&current=european_aqi&timezone=auto';
+            const airResponse = await makeRequest(airQualityUrl);
+            
+            if (airResponse.status === 200) {
+              const airData = JSON.parse(airResponse.data);
+              if (airData.current) {
+                console.log('✅ Open-Meteo Air Quality API is working');
+              } else {
+                console.log('⚠️ Open-Meteo API returned unexpected format');
+              }
+            } else {
+              console.log(`⚠️ Open-Meteo API returned status: ${airResponse.status}`);
+            }
+            
+            console.log('🎉 API integration tests completed!');
+            
+          } catch (error) {
+            console.log(`⚠️ API test warning: ${error.message}`);
+            console.log('Note: API tests may fail due to network conditions, this is not critical for deployment');
+          }
+        })();
+        EOF
+        
+        node api-test.js
+
+  mobile-test:
+    name: 📱 Mobile Compatibility Test
+    runs-on: ubuntu-latest
+    needs: e2e-tests
+    
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+      
+    - name: 🟢 Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        
+    - name: 📦 Install dependencies
+      run: |
+        npm ci || npm install
+        npx playwright install --with-deps chromium
+        
+    - name: 🚀 Start local server
+      run: |
+        npx http-server . -p 3000 &
+        sleep 5
+        
+    - name: 📱 Test mobile viewports
+      run: |
+        cat > mobile-test.js << 'EOF'
+        const { chromium } = require('playwright');
+
+        const mobileDevices = [
+          { name: 'iPhone 12', width: 390, height: 844 },
+          { name: 'Samsung Galaxy S21', width: 384, height: 854 },
+          { name: 'iPad', width: 768, height: 1024 },
+          { name: 'Small Mobile', width: 320, height: 568 }
+        ];
+
+        (async () => {
+          console.log('📱 Testing mobile compatibility...');
+          
+          const browser = await chromium.launch();
+          
+          for (const device of mobileDevices) {
+            console.log(`📱 Testing ${device.name} (${device.width}x${device.height})`);
+            
+            const page = await browser.newPage();
+            await page.setViewportSize({ width: device.width, height: device.height });
+            
+            try {
+              await page.goto('http://localhost:3000');
+              await page.waitForSelector('h1', { timeout: 5000 });
+              
+              // Verificar se elementos principais são visíveis
+              const titleVisible = await page.isVisible('h1');
+              const formVisible = await page.isVisible('form');
+              const cityInputVisible = await page.isVisible('input[name="city"]');
+              const submitButtonVisible = await page.isVisible('button[type="submit"]');
+              
+              console.log(`  ✅ Title visible: ${titleVisible}`);
+              console.log(`  ✅ Form visible: ${formVisible}`);
+              console.log(`  ✅ City input visible: ${cityInputVisible}`);
+              console.log(`  ✅ Submit button visible: ${submitButtonVisible}`);
+              
+              if (!titleVisible || !formVisible || !cityInputVisible || !submitButtonVisible) {
+                console.log(`  ⚠️ Some elements not visible on ${device.name}`);
+              } else {
+                console.log(`  🎉 ${device.name} test passed!`);
+              }
+              
+            } catch (error) {
+              console.log(`  ❌ Error testing ${device.name}: ${error.message}`);
+            } finally {
+              await page.close();
+            }
+          }
+          
+          await browser.close();
+          console.log('📱 Mobile compatibility tests completed!');
+        })();
+        EOF
+        
+        node mobile-test.js

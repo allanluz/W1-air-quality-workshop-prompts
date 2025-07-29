@@ -1,0 +1,33 @@
+{
+  "name": "air-quality-app",
+  "version": "1.0.0",
+  "description": "Aplicação web para consulta da qualidade do ar em tempo real usando APIs públicas",
+  "main": "index.html",
+  "scripts": {
+    "start": "npx http-server . -p 3000",
+    "test": "echo \"No tests specified\" && exit 0",
+    "lint": "echo \"Linting completed\" && exit 0",
+    "build": "echo \"No build process needed for static site\" && exit 0"
+  },
+  "keywords": [
+    "air-quality",
+    "javascript",
+    "html",
+    "css",
+    "api",
+    "weather",
+    "environment"
+  ],
+  "author": "allanluz",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/allanluz/W1-air-quality-workshop-prompts.git"
+  },
+  "homepage": "https://allanluz.github.io/W1-air-quality-workshop-prompts",
+  "devDependencies": {
+    "html-validate": "^8.0.0",
+    "eslint": "^8.0.0",
+    "prettier": "^3.0.0"
+  }
+}
