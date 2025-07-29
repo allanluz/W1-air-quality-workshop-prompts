@@ -29,6 +29,15 @@ bower_components
 # Compiled binary addons
 build/Release
 
+# Test results and reports
+test-results/
+playwright-report/
+*.log
+
+# Temporary files
+tmp/
+temp/
+
 # Dependency directories
 jspm_packages/
 

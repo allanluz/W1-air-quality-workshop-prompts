@@ -23,8 +23,7 @@ jobs:
         
     - name: 📦 Install dependencies
       run: |
-        npm init -y
-        npm install --save-dev html-validate eslint prettier
+        npm install
         
     - name: 🔍 Validate HTML structure
       run: |
@@ -86,6 +85,20 @@ jobs:
         fi
         
         echo "🎉 Application structure validation completed"
+
+    - name: 🧪 Run Unit Tests
+      run: |
+        echo "🧪 Running unit tests..."
+        npm run test:ci
+        echo "✅ Unit tests completed"
+        
+    - name: 📊 Upload Coverage Reports
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./coverage/lcov.info
+        flags: unittests
+        name: codecov-umbrella
+        fail_ci_if_error: false
 
   security-scan:
     name: 🔒 Security Scan
